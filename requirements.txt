@@ -1,8 +1,16 @@
-fastapi
-uvicorn
-pandas
-sqlalchemy
-python-dotenv
+# Core
 streamlit
-psycopg[binary]
-openpyxl
+sqlalchemy
+psycopg[binary]    # driver para Postgres (ya lo usas con docker-compose)
+python-dotenv
+pyyaml
+pandas
+openpyxl           # lectura de Excel (.xlsx)
+xlrd               # lectura de Excel antiguos (.xls)
+
+# Extras de UX / cache
+watchdog           # mejora el autoreload de Streamlit
+streamlit-extras   # switch_page y otros atajos útiles
+
+# Desarrollo / migraciones
+alembic            # para futuras migraciones de BBDD

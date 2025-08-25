@@ -1,0 +1,19 @@
+db_url: ${DB_URL}   # si no hay .env, puedes poner aquí una URL directa
+
+ingest:
+  default_write_mode: replace   # replace | append
+  allowed_tables: [products, customers, orders, campaigns, ga_sessions]
+
+connectors:
+  ga4:
+    enabled: false
+    property_id: ""
+    credentials_json_path: ""   # ruta a tu JSON de service account
+  meta:
+    enabled: false
+    access_token: ""
+    ad_account_id: ""
+  shopify:
+    enabled: false
+    shop: ""
+    admin_api_token: ""
