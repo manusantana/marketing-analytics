@@ -7,6 +7,14 @@ import pandas as pd
 from sqlalchemy import text
 from etl.utils import get_engine, ensure_aux_tables, load_config, bump_data_version
 
+REQUIRED_COLS = {  # columnas mínimas requeridas por tabla
+    "products": ["id", "name", "category", "cost", "price"],
+    "customers": ["id", "name", "country", "segment"],
+    "orders": ["id", "customer_id", "date", "product_id", "qty", "net_revenue", "cogs"],
+    "campaigns": ["id", "source", "medium", "campaign_name", "date", "cost"],
+    "ga_sessions": ["date", "source", "medium", "country", "sessions", "transactions", "revenue", "users", "bounces"],
+}
+
 
 ensure_aux_tables()
 engine = get_engine()
@@ -30,27 +38,37 @@ if upl is not None:
     else:
         df = pd.read_csv(upl)
     st.write("Preview:", df.head())
+    # validación mínima de columnas por tabla
+    missing = [c for c in REQUIRED_COLS.get(table, []) if c not in df.columns]
+    if missing:
+        st.error(f"Faltan columnas en {table}: {', '.join(missing)}")  # bloquea si faltan
+        st.stop()
 
-    if st.button("Cargar"):
-        if df.empty:
-            st.warning("El archivo no tiene filas.")
-        else:
-            if_exists = "replace" if mode=="replace" else "append"
-            df.to_sql(table, engine, if_exists=if_exists, index=False)
-            with engine.begin() as c:
-                c.execute(text("""
-                    INSERT INTO ingest_log(table_name, rows, mode, filename) 
-                    VALUES(:t,:r,:m,:f)
-                """), {"t": table, "r": int(len(df)), "m": mode, "f": upl.name})
-            st.success(f"Cargadas {len(df)} filas en '{table}' (modo {mode}).")
-            ts = bump_data_version()                 # 1) sube versión global en DB
-            st.cache_data.clear()                    # 2) invalida caché global
-            st.session_state["data_version"] = ts    # 3) propaga versión a la sesión
-            st.switch_page("Dashboard.py")              # 4) navega a la página principal
-            
-            bump_data_version()
-            st.cache_data.clear()
-            st.toast("Datos actualizados. Puedes volver al Dashboard.")
+    # casting seguro de tipos
+    if table == "orders":
+        if "date" in df.columns:
+            df["date"] = pd.to_datetime(df["date"], errors="coerce").dt.date  # normaliza fechas
+        for c in ("qty","net_revenue","cogs","cost","price","sessions","transactions","revenue","users","bounces"):
+            if c in df.columns:
+                df[c] = pd.to_numeric(df[c], errors="coerce")  # fuerza numéricos
+
+        if st.button("Cargar"):
+            if df.empty:
+                st.warning("El archivo no tiene filas.")
+            else:
+                if_exists = "replace" if mode == "replace" else "append"  # modo escritura
+                df.to_sql(table, engine, if_exists=if_exists, index=False)  # escribe en DB
+                with engine.begin() as c:
+                    c.execute(text("""
+                        INSERT INTO ingest_log(table_name, rows, mode, filename)
+                VALUES(:t,:r,:m,:f)
+            """), {"t": table, "r": int(len(df)), "m": mode, "f": upl.name})
+        st.success(f"Cargadas {len(df)} filas en '{table}' (modo {mode}).")  # feedback
+
+        ts = bump_data_version()               # sube versión global
+        st.cache_data.clear()                  # invalida caché
+        st.session_state["data_version"] = ts  # propaga versión
+        st.switch_page("Dashboard.py")         # navega al dashboard
 
 st.subheader("Histórico de cargas")
 try:

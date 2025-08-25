@@ -2,9 +2,12 @@
 import sys, os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from etl.utils import get_engine, load_config, ensure_aux_tables, get_data_version
+from sqlalchemy import text
+
+from etl.utils import get_engine, load_config, ensure_aux_tables, get_data_version, get_db_path
 import streamlit as st
 import pandas as pd
+
 
 cfg = load_config()                     # lee config.yml/.env
 engine = get_engine()                   # motor SQLAlchemy
@@ -66,3 +69,18 @@ if not orders.empty:
     st.dataframe(rfm, use_container_width=True)
 else:
     st.info("Sin pedidos para calcular RFM.")
+
+st.subheader("Estado de datos")
+try:
+    with engine.connect() as c:
+        n_orders = c.execute(text("SELECT COUNT(*) FROM orders")).scalar() or 0  # filas en orders
+        n_products = c.execute(text("SELECT COUNT(*) FROM products")).scalar() or 0  # filas en products
+        n_customers = c.execute(text("SELECT COUNT(*) FROM customers")).scalar() or 0  # filas en customers
+    col_a, col_b, col_c = st.columns(3)
+    col_a.metric("Rows orders", f"{n_orders:,}")   # filas pedidos
+    col_b.metric("Rows products", f"{n_products:,}")  # filas productos
+    col_c.metric("Rows customers", f"{n_customers:,}")  # filas clientes
+except Exception:
+    st.caption("No se pudieron leer contadores.")
+
+st.caption(f"DB: {get_db_path()}")  # muestra la ruta/URL real de la base

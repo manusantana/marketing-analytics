@@ -12,9 +12,16 @@ def load_config(path: str = "config.yml") -> dict:
     return {}
 
 def get_db_url():
-    cfg = load_config()
-    # Prioridad: ENV > config.yml > SQLite local
-    return os.getenv("DB_URL") or cfg.get("db_url") or "sqlite:///db/dev.db"
+    # prioriza ENV > config.yml > SQLite por defecto
+    raw = os.getenv("DB_URL") or load_config().get("db_url") or "sqlite:///db/dev.db"
+    if raw.startswith("sqlite:///"):
+        rel = raw.replace("sqlite:///", "")  # extrae la ruta
+        if not os.path.isabs(rel):           # convierte a absoluta desde la raíz del repo
+            repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+            rel = os.path.join(repo_root, rel)
+        return f"sqlite:///{rel}"
+    return raw
+
 
 def get_engine():
     return create_engine(get_db_url())
@@ -74,3 +81,10 @@ def get_data_version():
     with eng.begin() as c:
         r = c.execute(text("SELECT value FROM settings WHERE key='data_version'")).fetchone()
     return r[0] if r else "0"
+    
+def get_db_path() -> str:
+    # devuelve la ruta absoluta del fichero SQLite si aplica, o la URL completa si es Postgres
+    url = get_db_url()
+    if url.startswith("sqlite:///"):
+        return url.replace("sqlite:///", "")
+    return url
