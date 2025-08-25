@@ -46,7 +46,7 @@ if upl is not None:
             ts = bump_data_version()                 # 1) sube versión global en DB
             st.cache_data.clear()                    # 2) invalida caché global
             st.session_state["data_version"] = ts    # 3) propaga versión a la sesión
-            st.switch_page("Dashboard")              # 4) navega a la página principal
+            st.switch_page("Dashboard.py")              # 4) navega a la página principal
             
             bump_data_version()
             st.cache_data.clear()
