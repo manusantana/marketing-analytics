@@ -52,23 +52,26 @@ if upl is not None:
             if c in df.columns:
                 df[c] = pd.to_numeric(df[c], errors="coerce")  # fuerza numéricos
 
-        if st.button("Cargar"):
-            if df.empty:
-                st.warning("El archivo no tiene filas.")
-            else:
-                if_exists = "replace" if mode == "replace" else "append"  # modo escritura
-                df.to_sql(table, engine, if_exists=if_exists, index=False)  # escribe en DB
-                with engine.begin() as c:
-                    c.execute(text("""
-                        INSERT INTO ingest_log(table_name, rows, mode, filename)
-                VALUES(:t,:r,:m,:f)
-            """), {"t": table, "r": int(len(df)), "m": mode, "f": upl.name})
-        st.success(f"Cargadas {len(df)} filas en '{table}' (modo {mode}).")  # feedback
-
-        ts = bump_data_version()               # sube versión global
-        st.cache_data.clear()                  # invalida caché
-        st.session_state["data_version"] = ts  # propaga versión
-        st.switch_page("Dashboard.py")         # navega al dashboard
+    if st.button("Cargar"):
+        if df.empty:
+            st.warning("El archivo no tiene filas.")
+        else:
+            if_exists = "replace" if mode=="replace" else "append"
+            df.to_sql(table, engine, if_exists=if_exists, index=False)
+            with engine.begin() as c:
+                c.execute(text("""
+                    INSERT INTO ingest_log(table_name, rows, mode, filename) 
+                    VALUES(:t,:r,:m,:f)
+                """), {"t": table, "r": int(len(df)), "m": mode, "f": upl.name})
+            st.success(f"Cargadas {len(df)} filas en '{table}' (modo {mode}).")
+            ts = bump_data_version()                 # 1) sube versión global en DB
+            st.cache_data.clear()                    # 2) invalida caché global
+            st.session_state["data_version"] = ts    # 3) propaga versión a la sesión
+            st.switch_page("Dashboard.py")              # 4) navega a la página principal
+            
+            bump_data_version()
+            st.cache_data.clear()
+            st.toast("Datos actualizados. Puedes volver al Dashboard.")
 
 st.subheader("Histórico de cargas")
 try:
