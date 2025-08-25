@@ -1,0 +1,1 @@
+select * from ga_sessions

@@ -1,0 +1,12 @@
+name: 'marketing_analytics'
+version: '1.0'
+config-version: 2
+
+profile: 'default'
+
+model-paths: ["models"]
+seed-paths: ["seeds"]
+
+models:
+  marketing_analytics:
+    +materialized: view
